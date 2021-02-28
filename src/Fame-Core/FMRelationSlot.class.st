@@ -173,7 +173,7 @@ FMRelationSlot >> printOn: aStream [
 
 { #category : #accessing }
 FMRelationSlot >> realInverseSlotFor: anObject [
-	^ inverseSlotDic at: anObject class ifAbsentPut: [ anObject class slotNamed: self inverseName ]
+	^ "inverseSlotDic at: anObject class ifAbsentPut: [" anObject class slotNamed: self inverseName "]"
 ]
 
 { #category : #internal }
