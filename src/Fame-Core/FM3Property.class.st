@@ -61,9 +61,7 @@ Class {
 		'implementingSelector',
 		'isTarget',
 		'isSource',
-		'comment',
-		'isDependencySource',
-		'isDependencyTarget'
+		'comment'
 	],
 	#category : #'Fame-Core-Model'
 }
@@ -150,8 +148,6 @@ FM3Property >> initialize [
 	isDerived := false.
 	isMultivalued := false.
 	isSource := false.
-	isDependencySource := false.
-	isDependencyTarget := false.
 	isTarget := false
 ]
 
@@ -171,26 +167,6 @@ FM3Property >> isContainer [
 { #category : #accessing }
 FM3Property >> isContainer: anObject [
 	isContainer := anObject
-]
-
-{ #category : #accessing }
-FM3Property >> isDependencySource [
-	^isDependencySource
-]
-
-{ #category : #accessing }
-FM3Property >> isDependencySource: anObject [
-	isDependencySource := anObject
-]
-
-{ #category : #accessing }
-FM3Property >> isDependencyTarget [
-	^isDependencyTarget
-]
-
-{ #category : #accessing }
-FM3Property >> isDependencyTarget: aBoolean [
-	isDependencyTarget := aBoolean
 ]
 
 { #category : #accessing }
