@@ -53,23 +53,23 @@ Class {
 	#tag : 'Exporters'
 }
 
-{ #category : 'exporting' }
-FMModelExporter >> export: aCollectionOfElements [
+{ #category : 'api' }
+FMModelExporter >> export: aCollectionOfElements [ [
 	printer inDocumentDo: [ 
 		aCollectionOfElements
 			do: [ :each | self exportEntity: each ]
 			separatedBy: [ printer printEntitySeparator ] ]
+			]
 ]
 
 { #category : 'exporting' }
 FMModelExporter >> exportEntity: each [
-
 	| meta |
 	meta := model metaDescriptionOf: each.
 	printer inEntity: meta fullName do: [
 		| sortedProperties |
 		printer serial: (self indexOf: each).
-		sortedProperties := (self sortedPropertiesOf: meta) select: [
+		sortedProperties := (self sortedPropertiesOf: meta) select: [ 
 			                    :property |
 			                    self shouldExportProperty: property for: each ].
 		sortedProperties ifNotEmpty: [ printer printPropertySeparator ].
@@ -77,6 +77,45 @@ FMModelExporter >> exportEntity: each [
 			do: [ :property | self exportProperty: property for: each ]
 			separatedBy: [ printer printPropertySeparator ] ].
 	self incrementProgressBar
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> exportEntityNouveau: each [
+	| meta |
+	meta := model metaDescriptionOf: each.
+	printer inEntity: meta fullName do: [
+		| sortedProperties |
+		printer serial: (self indexOf: each).
+		sortedProperties := (self sortedPropertiesOf: meta) select: [ 
+			                    :property |
+			                    (self shouldExportProperty: property for: each) and: [ property type isPrimitive ]  ]. "et ici j'ai ajoute le and: [ property type isPrimitive ] "
+		sortedProperties ifNotEmpty: [ printer printPropertySeparator ].
+		sortedProperties
+			do: [ :property | self exportPrimitivePropertyNouveau: property for: each ] "je change exportEntity pour exportPrimitivePropertyNouveau:"
+			separatedBy: [ printer printPropertySeparator ] ].
+	self incrementProgressBar
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> exportPrimitivePropertyNouveau: property for: each [
+
+	| values |
+
+	values := model get: property element: each.
+	self exportPrimitivePropertyNouveau: property withAll: values
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> exportPrimitivePropertyNouveau: property withAll: values [
+
+	printer inProperty: property name do: [
+		property isMultivalued ifTrue: [ printer beginMultivalue: property ].
+		(values reject: [ :value | value asString = 'unavailable' "value = MooseUnavailableMetric" ])
+			do: [ :each |
+				property type isPrimitive
+					ifTrue: [ printer primitive: each ] ] "tirei o ifFalse"
+			separatedBy: [ printer printEntitySeparator ].
+		property isMultivalued ifTrue: [ printer endMultivalue: property ] ]
 ]
 
 { #category : 'exporting' }
@@ -88,7 +127,6 @@ FMModelExporter >> exportProperty: property for: each [
 
 { #category : 'exporting' }
 FMModelExporter >> exportProperty: property withAll: values [
-
 	printer inProperty: property name do: [
 		property isMultivalued ifTrue: [ printer beginMultivalue: property ].
 		(values reject: [ :value | value asString = 'unavailable' "value = MooseUnavailableMetric" ])
@@ -104,6 +142,116 @@ FMModelExporter >> exportProperty: property withAll: values [
 									ifFalse: [ printer referenceNumber: (self indexOf: each) ] ] ] ]
 			separatedBy: [ printer printEntitySeparator ].
 		property isMultivalued ifTrue: [ printer endMultivalue: property ] ]
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> exportRelationProperty: property for: each [ 
+
+    | values |
+    values := model get: property element: each.
+
+    self exportRelationProperty: property withAll: values
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> exportRelationProperty: property withAll: values [
+
+    printer inProperty: property name do: [
+
+        property isMultivalued ifTrue: [ 
+            printer beginMultivalue: property 
+        ].
+
+        (values reject: [ :value | value asString = 'unavailable' ])
+            do: [ :value |
+
+                (FM3Constant constants includes: value)
+                    ifTrue: [ printer referenceName: value name ]
+                    ifFalse: [ printer referenceNumber: (self indexOf: value) ]
+
+            ]
+            separatedBy: [ printer printPropertySeparator ].
+
+        property isMultivalued ifTrue: [ 
+            printer endMultivalue: property 
+        ]
+    ]
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> exportRelationsOf: each [
+
+	| meta relationProperties |
+
+	meta := model metaDescriptionOf: each.
+
+	relationProperties := (self sortedPropertiesOf: meta) select: [
+		:property |
+		(self
+			shouldExportProperty: property
+			for: each)
+			and: [ property type isPrimitive not ]
+	].
+
+	relationProperties ifEmpty: [ ^ self ].
+
+	printer beginRelationEntity.
+
+	printer serial: (self indexOf: each).
+
+	relationProperties ifNotEmpty: [
+		printer printPropertySeparator
+	].
+
+	relationProperties
+		do: [ :property |
+			self exportRelationProperty: property for: each ]
+		separatedBy: [
+			printer printPropertySeparator
+		].
+
+	printer endRelationEntity
+]
+
+{ #category : 'api' }
+FMModelExporter >> exportSepareted: aCollectionOfElements [
+	| elementsWithRelations |
+
+	elementsWithRelations := aCollectionOfElements select: [ :each |
+		self hasRelationsToExport: each ].
+
+	printer inDocumentDo: [
+		printer beginEntities.
+
+		aCollectionOfElements
+			do: [ :each | self exportEntityNouveau: each ]
+			separatedBy: [ printer printEntitySeparator ].
+
+		printer endEntities.
+
+		printer printSeparator.
+
+		printer beginRelations.
+
+		elementsWithRelations
+			do: [ :each | self exportRelationsOf: each ]
+			separatedBy: [ printer printRelationSeparator ].
+
+		printer endRelations
+	]
+]
+
+{ #category : 'testing' }
+FMModelExporter >> hasRelationsToExport: each [
+
+    | meta sortedProperties |
+    meta := model metaDescriptionOf: each.
+
+    sortedProperties := (self sortedPropertiesOf: meta) select: [ :property |
+        (self shouldExportProperty: property for: each)
+            and: [ property type isPrimitive not ] ].
+
+    ^ sortedProperties isNotEmpty
 ]
 
 { #category : 'exporting' }
@@ -160,19 +308,40 @@ FMModelExporter >> run [
 ]
 
 { #category : 'exporting' }
+FMModelExporter >> runSepareted [
+
+	| roots |
+	roots := self roots.
+	numberOfExportedElements := 0.
+	UIManager default
+		displayProgress: 'Writing ' , printer stream localName
+		from: 0
+		to: roots size
+		during: [ :bar |
+				progressBar := bar.
+				lastUpdate := 0.
+				self exportSepareted: roots ]
+]
+
+{ #category : 'exporting' }
 FMModelExporter >> shouldExportProperty: property for: each [
+
 	| values |
 	(self shouldIgnoreProperty: property) ifTrue: [ ^ false ].
 	values := model get: property element: each.
 
-	"Do not export empty properties."
 	values isEmptyOrNil ifTrue: [ ^ false ].
 	^ true
 ]
 
 { #category : 'exporting' }
 FMModelExporter >> shouldIgnoreProperty: property [
+
 	(model metamodel includes: property) ifFalse: [ ^ true ].
+
+	property name = #attributes ifTrue: [ ^ false ].
+
+	property name = #parentAnnotationInstance ifTrue: [ ^ true ].
 
 	^ property isDerived
 ]

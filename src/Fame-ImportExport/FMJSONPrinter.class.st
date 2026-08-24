@@ -12,6 +12,12 @@ FMJSONPrinter >> beginDocument [
 	stream nextPut: $[
 ]
 
+{ #category : 'printing' }
+FMJSONPrinter >> beginEntities [
+
+	stream nextPut: $[
+]
+
 { #category : 'parsing' }
 FMJSONPrinter >> beginEntity: name [
 	indent := indent + 1.
@@ -39,8 +45,21 @@ FMJSONPrinter >> beginProperty: name [
 		nextPut: $:
 ]
 
+{ #category : 'printing' }
+FMJSONPrinter >> beginRelations [
+
+	stream nextPut: $[
+]
+
 { #category : 'parsing' }
 FMJSONPrinter >> endDocument [
+	self crTabs.
+	stream nextPut: $]
+]
+
+{ #category : 'printing' }
+FMJSONPrinter >> endEntities [
+
 	self crTabs.
 	stream nextPut: $]
 ]
@@ -59,6 +78,13 @@ FMJSONPrinter >> endMultivalue: anEntity [
 
 { #category : 'parsing' }
 FMJSONPrinter >> endProperty: name [
+]
+
+{ #category : 'printing' }
+FMJSONPrinter >> endRelations [
+
+	self crTabs.
+	stream nextPut: $]
 ]
 
 { #category : 'parsing' }
@@ -88,6 +114,18 @@ FMJSONPrinter >> printEntitySeparator [
 
 { #category : 'parsing' }
 FMJSONPrinter >> printPropertySeparator [
+	stream nextPut: $,
+]
+
+{ #category : 'printing' }
+FMJSONPrinter >> printRelationSeparator [
+
+	stream nextPut: $,
+]
+
+{ #category : 'printing' }
+FMJSONPrinter >> printSeparator [
+
 	stream nextPut: $,
 ]
 

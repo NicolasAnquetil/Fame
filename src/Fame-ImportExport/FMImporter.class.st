@@ -98,9 +98,45 @@ FMImporter >> beginEntity: name [
 	stack push: (FMFutureEntity in: self named: translatedName)
 ]
 
+{ #category : 'as yet unclassified' }
+FMImporter >> beginExistingEntity: name serial: serial [
+
+    | translatedName element future |
+
+    translatedName := self translationUnit translate: name.
+    element := self elementAtSerial: serial.
+
+    future := FMFutureEntity new
+        in: self
+        named: translatedName
+        existingInstance: element;
+        yourself.
+
+    stack push: future
+]
+
 { #category : 'parsing' }
 FMImporter >> beginProperty: name [
 	self currentEntity beginProperty: name
+]
+
+{ #category : 'parsing' }
+FMImporter >> createDirectEntityNamed: name serial: serial [
+
+	| translatedName metaDescription entity |
+
+	translatedName := self translationUnit translate: name.
+
+	metaDescription := self metamodel
+		elementNamed: translatedName.
+
+	entity := metaDescription createInstance.
+
+	self assign: entity to: serial.
+
+	entities add: entity.
+
+	^ entity
 ]
 
 { #category : 'accessing' }
@@ -113,6 +149,13 @@ FMImporter >> dangling: reference to: serial [
 	(reminderDict at: serial ifAbsentPut: [ OrderedCollection new ]) add: reference.
 	numberOfDanglingReferences := numberOfDanglingReferences + 1.
 	^ reference
+]
+
+{ #category : 'testing' }
+FMImporter >> elementAtSerial: serial [
+    ^ serialDict
+        at: serial
+        ifAbsent: [ self error: 'No entity found for serial ', serial asString ]
 ]
 
 { #category : 'parsing' }
@@ -132,6 +175,11 @@ FMImporter >> endEntity: name [
 	stack ifNotEmpty: [ self currentEntity addToPropertyValues: entity ]
 ]
 
+{ #category : 'as yet unclassified' }
+FMImporter >> endExistingEntity: name [
+    stack pop
+]
+
 { #category : 'parsing' }
 FMImporter >> endProperty: name [
 	self currentEntity endProperty
@@ -145,6 +193,15 @@ FMImporter >> entityAt: aSerial ifAbsent: aBlock [
 { #category : 'accessing' }
 FMImporter >> fromString: aString [
 	self stream: aString readStream
+]
+
+{ #category : 'testing' }
+FMImporter >> hasSerial: serial [
+
+	"to remove ??
+	serialDict ifNil: [ ^ false ]."
+
+	^ serialDict includesKey: serial
 ]
 
 { #category : 'initialization' }
@@ -205,6 +262,17 @@ FMImporter >> run [
 { #category : 'parsing' }
 FMImporter >> serial: serial [
 	self assign: self currentEntity instance to: serial
+]
+
+{ #category : 'parsing' }
+FMImporter >> setDirectPropertyNamed: propertyName
+	of: entity
+	values: values [
+
+	^ model
+		set: propertyName
+		element: entity
+		values: values
 ]
 
 { #category : 'accessing' }
