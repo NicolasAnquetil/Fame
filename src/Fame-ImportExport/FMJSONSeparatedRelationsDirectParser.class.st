@@ -366,12 +366,12 @@ FMJSONSeparatedRelationsDirectParser >> numberValue [
 
     buffer reset.
 
-    chararacter = $- ifTrue: [
-        buffer nextPut: chararacter.
+    character = $- ifTrue: [
+        buffer nextPut: character.
         self next ].
 
-    [ chararacter notNil and: [ chararacter isDigit ] ] whileTrue: [
-        buffer nextPut: chararacter.
+    [ character notNil and: [ character isDigit ] ] whileTrue: [
+        buffer nextPut: character.
         self next ].
 
     numberString := buffer contents.
