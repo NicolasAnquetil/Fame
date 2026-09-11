@@ -31,189 +31,151 @@ that refers to it are updated accordingly.
 
 "
 Class {
-	#name : #FMMultivalueLink,
-	#superclass : #Collection,
+	#name : 'FMMultivalueLink',
+	#superclass : 'OrderedCollection',
 	#instVars : [
-		'values',
 		'owner',
 		'opposite'
 	],
-	#category : #'Fame-Core-Utilities'
+	#category : 'Fame-Core-Utilities',
+	#package : 'Fame-Core',
+	#tag : 'Utilities'
 }
 
-{ #category : #'instance creation' }
+{ #category : 'instance creation' }
+FMMultivalueLink class >> new [
+
+	^ self new: 4
+]
+
+{ #category : 'instance creation' }
 FMMultivalueLink class >> on: element opposite: oppositeSelector [
 	^ self new
 		with: element opposite: oppositeSelector;
 		yourself
 ]
 
-{ #category : #'instance creation' }
+{ #category : 'instance creation' }
 FMMultivalueLink class >> on: element update: selector from: old to: new [
 	"refresh the other side of the relations to reflect change in value"
 
-	old ~= new
-		ifTrue: [ old ifNotNil: [ (old perform: selector) unsafeRemove: element ].
-			new ifNotNil: [ (new perform: selector) unsafeAdd: element ] ].
+	old ~= new ifTrue: [
+		old ifNotNil: [ (old perform: selector) unsafeRemove: element ].
+		new ifNotNil: [ (new perform: selector) unsafeAdd: element ] ].
 	^ new
 ]
 
-{ #category : #copying }
-FMMultivalueLink >> , aCollection [
-	^ self asOrderedCollection , aCollection
-]
+{ #category : 'adding' }
+FMMultivalueLink >> addLast: anElement [
 
-{ #category : #comparing }
-FMMultivalueLink >> = otherCollection [ 
-	"Answer true if the receiver is equivalent to the otherCollection.
-	First test for identity, then rule out different species and sizes of
-	collections. As a last resort, examine each element of the receiver
-	and the otherCollection."
-
-	self == otherCollection ifTrue: [^ true].
-	self species == otherCollection species ifFalse: [^ false].
-	^ values hasEqualElements: otherCollection asOrderedCollection
-]
-
-{ #category : #accessing }
-FMMultivalueLink >> add: anElement [
-	anElement perform: opposite with: owner.
+	self addOpposite: anElement.
 	self unsafeAdd: anElement.
 	^ anElement
 ]
 
-{ #category : #accessing }
-FMMultivalueLink >> at: index [
+{ #category : 'adding' }
+FMMultivalueLink >> addOpposite: anElement [
 
-	^values at: index
+	anElement perform: opposite with: owner
 ]
 
-{ #category : #iterators }
-FMMultivalueLink >> basicIterator [
-	^ values basicIterator
+{ #category : 'converting' }
+FMMultivalueLink >> asOrderedCollection [
+
+	^ OrderedCollection newFrom: self
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMMultivalueLink >> byName: name [
+
 	^ self byName: name ifAbsent: [ self errorNotFound: name ]
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMMultivalueLink >> byName: name ifAbsent: exceptionBlock [
 
-	^values
-			detect: [ :each | each name asString = name asString ]
-			ifNone: exceptionBlock
-	 
+	^ self
+		  detect: [ :each | each name asString = name asString ]
+		  ifNone: exceptionBlock
 ]
 
-{ #category : #enumerating }
-FMMultivalueLink >> do: aBlock [ 
-	
-	values do: aBlock
+{ #category : 'accessing' }
+FMMultivalueLink >> byName: name ifPresent: aBlock ifAbsent: exceptionBlock [
+
+	^ self
+		  detect: [ :each | each name asString = name asString ]
+		  ifFound: aBlock
+		  ifNone: exceptionBlock
 ]
 
-{ #category : #'accessing-computed' }
-FMMultivalueLink >> first [
-	^ self at: 1
-]
-
-{ #category : #comparing }
-FMMultivalueLink >> hash [
-	"From sequenceable collection"
-	| hash |
-	hash := self species hash.
-	1 to: self size do: [ :i | hash := (hash + (self at: i) hash) hashMultiply ].
-	^ hash
-]
-
-{ #category : #iterators }
-FMMultivalueLink >> iterator [
-	^ values iterator
-]
-
-{ #category : #'accessing-computed' }
-FMMultivalueLink >> last [
-	^ values last
-]
-
-{ #category : #copying }
-FMMultivalueLink >> postCopy [
-
-	super postCopy.
-	values := values copy.
-]
-
-{ #category : #printing }
+{ #category : 'printing' }
 FMMultivalueLink >> printOn: aStream [
 
 	self asArray printOn: aStream
 ]
 
-{ #category : #removing }
-FMMultivalueLink >> remove: anElement ifAbsent: exceptionBlock [ 
-	
-	values remove: anElement ifAbsent: [ ^exceptionBlock value ].
-	anElement perform: opposite with: nil.
-	^anElement
+{ #category : 'removing' }
+FMMultivalueLink >> remove: anElement ifAbsent: exceptionBlock [
+
+	super remove: anElement ifAbsent: [ ^ exceptionBlock value ].
+	self removeOpposite: anElement.
+	^ anElement
 ]
 
-{ #category : #removing }
+{ #category : 'removing' }
 FMMultivalueLink >> removeAll [
-	values reversed
-		do: [ :anElement | anElement perform: opposite with: nil ]
+	"The collection is reversed to make a copy, to avoid trying to remove while iterating,
+	and to remove items from last to first, which is faster."
+
+	self reversed do: [ :anElement | self remove: anElement ]
 ]
 
-{ #category : #'accessing-computed' }
-FMMultivalueLink >> second [
-	^ self at: 2
+{ #category : 'removing' }
+FMMultivalueLink >> removeOpposite: anElement [
+
+	anElement perform: opposite with: nil
 ]
 
-{ #category : #accessing }
-FMMultivalueLink >> size [
-
-	^values size
-]
-
-{ #category : #private }
+{ #category : 'private' }
 FMMultivalueLink >> species [
 
-	^OrderedCollection
+	^ OrderedCollection
 ]
 
-{ #category : #'accessing-computed' }
-FMMultivalueLink >> third [
-	^ self at: 3
+{ #category : 'private' }
+FMMultivalueLink >> uncheckUnsafeAdd: element [
+	"Calls the implementation in OrderedCollection."
+
+	super addLast: element
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMultivalueLink >> unsafeAdd: element [
-	(values includes: element)
-		ifFalse: [ values add: element ]
+	"The cost of this #includes can be pretty high so there is a way to disable it when we know there will be no duplicates. Check the class comment of the dynamic variable."
+
+	FMShouldCheckForDuplicatedEntitiesInMultivalueLinks value
+		ifTrue: [ (self includes: element) ifFalse: [ self uncheckUnsafeAdd: element ] ]
+		ifFalse: [ self uncheckUnsafeAdd: element ]
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMultivalueLink >> unsafeRemove: element [
 
-	values remove: element ifAbsent: nil
+	super remove: element ifAbsent: nil
 ]
 
-{ #category : #accessing }
+{ #category : 'adding' }
 FMMultivalueLink >> value: aCollection [
 
-	^self removeAll: values copy; addAll: aCollection
+	^ self
+		  removeAll;
+		  addAll: aCollection
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMultivalueLink >> with: element opposite: oppositeSelector [
+
 	self assert: oppositeSelector numArgs = 1.
-	values := OrderedCollection new.
 	owner := element.
 	opposite := oppositeSelector
-]
-
-{ #category : #enumerating }
-FMMultivalueLink >> withIndexDo: aBlock [ 
-	
-	values withIndexDo: aBlock
 ]

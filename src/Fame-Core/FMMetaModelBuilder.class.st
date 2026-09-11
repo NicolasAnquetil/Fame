@@ -65,8 +65,8 @@ Internal Representation and Key Implementation Points.
 
 "
 Class {
-	#name : #FMMetaModelBuilder,
-	#superclass : #Object,
+	#name : 'FMMetaModelBuilder',
+	#superclass : 'Object',
 	#instVars : [
 		'elements',
 		'classDict',
@@ -84,10 +84,12 @@ Class {
 	#classVars : [
 		'ShouldValidateMetaModel'
 	],
-	#category : #'Fame-Core-Utilities'
+	#category : 'Fame-Core-Utilities',
+	#package : 'Fame-Core',
+	#tag : 'Utilities'
 }
 
-{ #category : #processing }
+{ #category : 'processing' }
 FMMetaModelBuilder class >> metamodelFrom: aCollectionOfClasses [
 	^ self new
 		queue: aCollectionOfClasses;
@@ -95,7 +97,7 @@ FMMetaModelBuilder class >> metamodelFrom: aCollectionOfClasses [
 		asMetamodel
 ]
 
-{ #category : #processing }
+{ #category : 'processing' }
 FMMetaModelBuilder class >> metamodelFromPackages: aCollectionOfPackages [
 	^ self new
 		queue: (aCollectionOfPackages flatCollectAsSet: [ :p | p definedClasses asSet select: #isMetamodelEntity ]);
@@ -104,31 +106,31 @@ FMMetaModelBuilder class >> metamodelFromPackages: aCollectionOfPackages [
 		asMetamodel
 ]
 
-{ #category : #converting }
+{ #category : 'converting' }
 FMMetaModelBuilder >> asMetamodel [
 	^ FMMetaModel new
 		addAll: elements;
 		yourself
 ]
 
-{ #category : #running }
+{ #category : 'running' }
 FMMetaModelBuilder >> buildFM3 [
 	self
 		queue: (self class package definedClasses asSet select: #isMetamodelEntity);
 		run
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMMetaModelBuilder >> classes [
 	^ elements select: #isFM3Class
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMMetaModelBuilder >> elements [
 	^ elements
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMetaModelBuilder >> ensureClass: var [
 	var isBehavior ifTrue: [ ^ classDict at: var ].
 	var isSymbol ifTrue: [ ^ classDict at: (self class environment at: var) ifAbsent: [ metaDict at: var asString ] ].
@@ -136,7 +138,7 @@ FMMetaModelBuilder >> ensureClass: var [
 	self error: 'No class of this name found.'
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMetaModelBuilder >> ensurePackage: name [
 	self assert: (name isSymbol or: [ name isString ]).
 	^ self packages
@@ -147,22 +149,22 @@ FMMetaModelBuilder >> ensurePackage: name [
 				yourself ]
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMetaModelBuilder >> extractPackageFrom: method for: aFM3Element [
 	^ (method pragmaAt: #package:) ifNotNil: [ :p | packDict at: aFM3Element put: (p argumentAt: 1) ]
 ]
 
-{ #category : #running }
+{ #category : 'running' }
 FMMetaModelBuilder >> implementingPackages [
 	^ implementingPackages ifNil: [ implementingPackages := queue collect: #package as: Set ]
 ]
 
-{ #category : #running }
+{ #category : 'running' }
 FMMetaModelBuilder >> implementingPackages: aColl [
 	implementingPackages := aColl
 ]
 
-{ #category : #initialization }
+{ #category : 'initialization' }
 FMMetaModelBuilder >> initialize [
 	"Used for queuing classes before running."
 
@@ -185,74 +187,83 @@ FMMetaModelBuilder >> initialize [
 	metaDict := (FM3Constant constants collect: [ :const | const name asString -> const ]) asDictionary
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMetaModelBuilder >> methodsToProcessFrom: aClass [
 	"We need to process the methods from the class and the extensions methods comming from the packages containing the entites. We should reject extension methods comming from other packages."
 
 	^ aClass localMethods select: [ :method | method isExtension not or: [ self implementingPackages includes: method package ] ]
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMMetaModelBuilder >> packages [
 	^ elements select: #isFM3Package
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMetaModelBuilder >> processClass: aClass [
 	^ self processClass: aClass ifPragmaAbsent: [ self error: 'Fame Undeclared class ' , aClass name ]
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMetaModelBuilder >> processClass: aClass ifPragmaAbsent: anErrorBlock [
-	aClass metamodelDefinitionPragma
-		ifNil: anErrorBlock
-		ifNotNil: [ :pragma | 
-			| fm3Class |
-			fm3Class := FM3Class named: (pragma argumentAt: 1).
-			superclassDict at: fm3Class put: (pragma argumentAt: 2).
-			fm3Class implementingClass: aClass.
-
-			(pragma method pragmaAt: #abstract) ifNotNil: [ fm3Class isAbstract: true ].
-			self extractPackageFrom: pragma method for: fm3Class.
-			classDict at: aClass put: fm3Class.
-			(self methodsToProcessFrom: aClass) do: [ :each | self processCompiledMethod: each ].
-			aClass localSlots select: #isFMRelationSlot thenDo: [ :each | self processSlot: each in: aClass ].
-
-			traitsDict at: fm3Class put: aClass allGeneratedTraits.
-
-			elements add: fm3Class ]
+	aClass isTrait
+		ifTrue: [ self processTrait: aClass ifPragmaAbsent: anErrorBlock ]
+		ifFalse: [ aClass metamodelDefinitionPragma
+				ifNil: anErrorBlock
+				ifNotNil: [ :pragma | 
+					| fm3Class |
+					fm3Class := FM3Class named: (pragma argumentAt: 1).
+					aClass hasComment ifTrue: [ fm3Class comment: aClass comment ].
+					superclassDict at: fm3Class put: (pragma argumentAt: 2).
+					fm3Class implementingClass: aClass.
+					(pragma method pragmaAt: #abstract)
+						ifNotNil: [ fm3Class isAbstract: true ].
+					self extractPackageFrom: pragma method for: fm3Class.
+					classDict at: aClass put: fm3Class.
+					(self methodsToProcessFrom: aClass)
+						do: [ :each | self processCompiledMethod: each ].
+					aClass localSlots
+						select: #isFMRelationSlot
+						thenDo: [ :each | self processSlot: each in: aClass ].
+					traitsDict at: fm3Class put: aClass localGeneratedTraits.
+					elements add: fm3Class ] ]
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMetaModelBuilder >> processCompiledMethod: aMethod [
+
 	| method |
 	method := aMethod.
 
 	"If the method is a reflective method we need to ensure it is compiled and use its compiled method.
 	A refelctive method is for exemple a method created via a metalink and that was never executed."
-	(aMethod isKindOf: ReflectiveMethod)
-		ifTrue: [ method := aMethod
-				compileAndInstallCompiledMethod;
-				compiledMethod ].
+	(aMethod isKindOf: ReflectiveMethod) ifTrue: [
+			method := aMethod
+				          compileAndInstallCompiledMethod;
+				          compiledMethod ].
 	self assert: method isCompiledMethod.
 
-	"29 of October 2019: The MSEProperty:type:(opposite:) pragma is deprecated and should not be used anymore. But we still keep it for some time for backward compatibility."
 	method pragmas
-		detect: [ :each | #(#MSEProperty:type:opposite: #MSEProperty:type: #FMProperty:type:opposite: #FMProperty:type:) includes: each selector ]
-		ifFound: [ :pragma | 
-			| prop |
-			prop := FM3Property named: (pragma argumentAt: 1) asString.
-			typeDict at: prop put: (pragma argumentAt: 2).
-			mmClassDict at: prop put: method methodClass.
-			(pragma selector = #MSEProperty:type:opposite: or: [ pragma selector = #FMProperty:type:opposite: ])
-				ifTrue: [ oppositeDict at: prop put: (pragma argumentAt: 3) ].
-			self processInfosFrom: method for: prop.
+		detect: [ :each |
+				#( #FMProperty:type:opposite: #FMProperty:type: #FMProperty:type:defaultValue: )
+					includes: each selector ]
+		ifFound: [ :pragma |
+				| prop |
+				prop := FM3Property named: (pragma argumentAt: 1) asString.
+				typeDict at: prop put: (pragma argumentAt: 2).
+				mmClassDict at: prop put: method methodClass.
+				pragma selector = #FMProperty:type:defaultValue: ifTrue: [
+					prop defaultValue: (pragma argumentAt: 3) ].
+				pragma selector = #FMProperty:type:opposite: ifTrue: [
+					oppositeDict at: prop put: (pragma argumentAt: 3) ].
+				self processInfosFrom: method for: prop.
 
-			elements add: prop ]
+				elements add: prop ]
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMetaModelBuilder >> processInfosFrom: aMethod for: prop [
+
 	prop implementingSelector: aMethod selector.
 	self extractPackageFrom: aMethod for: prop.
 	(aMethod pragmaAt: #container) ifNotNil: [ prop isContainer: true ].
@@ -260,13 +271,11 @@ FMMetaModelBuilder >> processInfosFrom: aMethod for: prop [
 	(aMethod pragmaAt: #source) ifNotNil: [ prop isSource: true ].
 	(aMethod pragmaAt: #target) ifNotNil: [ prop isTarget: true ].
 	(aMethod pragmaAt: #multivalued) ifNotNil: [ prop isMultivalued: true ].
-	
-	(aMethod pragmaAt: #FMComment:) ifNotNil: [ :pragma | prop comment: (pragma argumentNamed: #FMComment) ].
-	self flag: #todo. "Next line should be removed in Moose 9 since the pragmas starting by MSE should be updated to the FM version."
-	(aMethod pragmaAt: #MSEComment:) ifNotNil: [ :pragma | prop comment: (pragma argumentNamed: #MSEComment) ]
+
+	(aMethod pragmaAt: #FMComment:) ifNotNil: [ :pragma | prop comment: (pragma argumentAt: 1) ]
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMetaModelBuilder >> processSlot: aSlot in: aClass [
 	| prop |
 	prop := FM3Property named: aSlot name.
@@ -282,12 +291,32 @@ FMMetaModelBuilder >> processSlot: aSlot in: aClass [
 	elements add: prop
 ]
 
-{ #category : #accessing }
+{ #category : 'private' }
+FMMetaModelBuilder >> processTrait: aTrait ifPragmaAbsent: anErrorBlock [
+	aTrait metamodelDefinitionPragma
+				ifNil: anErrorBlock
+				ifNotNil: [ :pragma | 
+					| fm3Trait |
+					fm3Trait := FM3Trait named: (pragma argumentAt: 1).
+					superclassDict at: fm3Trait put: (pragma argumentAt: 2).
+					fm3Trait implementingClass: aTrait.
+					self extractPackageFrom: pragma method for: fm3Trait.
+					classDict at: aTrait put: fm3Trait.
+					(self methodsToProcessFrom: aTrait)
+						do: [ :each | self processCompiledMethod: each ].
+					aTrait localSlots
+						select: #isFMRelationSlot
+						thenDo: [ :each | self processSlot: each in: aTrait ].
+					traitsDict at: fm3Trait put: aTrait localGeneratedTraits.
+					elements add: fm3Trait ]
+]
+
+{ #category : 'accessing' }
 FMMetaModelBuilder >> properties [
 	^ elements select: #isFM3Property
 ]
 
-{ #category : #running }
+{ #category : 'running' }
 FMMetaModelBuilder >> queue: var [
 	"Add one or many classes to be processed. Nothing is done before the run method is called"
 
@@ -303,7 +332,7 @@ FMMetaModelBuilder >> queue: var [
 	[ false ] assert.
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMMetaModelBuilder >> resolveObjectReferences [
 
 	"establish class-package and property-package links"
@@ -316,31 +345,32 @@ FMMetaModelBuilder >> resolveObjectReferences [
 	self classes do: [ :meta | metaDict at: meta fullName asString put: meta ].
 
 	"establish class-superclass associations"
-	superclassDict keysAndValuesDo: [ :meta :value | meta superclass: (self ensureClass: value) ].
+	superclassDict keysAndValuesDo: [ :meta :value | meta isFM3Class ifTrue: [ meta superclass: (self ensureClass: value) ] ].
 
 	"establish property-type-opposite relations"
 	typeDict keysAndValuesDo: [ :prop :value | prop type: (self ensureClass: value) ].
 
 	"establish class-traits relations"
 	traitsDict keysAndValuesDo: [ :class :traits | class addTraits: (traits collect: [ :t | classDict at: t ]) ].
+	traitsDict keysAndValuesDo: [ :class :traits | traits do: [ :t | (classDict at: t) addUser: class ] ].
 
 	" Fill in oppositelinks"
 	oppositeDict keysAndValuesDo: [ :prop :oppName | prop opposite: (prop type propertyNamed: oppName) ]
 ]
 
-{ #category : #running }
+{ #category : 'running' }
 FMMetaModelBuilder >> run [
 	queue do: [ :cls | self processClass: cls ].
 	self resolveObjectReferences.
 	self validator for: self
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMMetaModelBuilder >> validator [
 	^ validator ifNil: [ FMMetamodelValidator ]
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMMetaModelBuilder >> withoutValidation [
 	validator := FMNilMetamodelValidator
 ]

@@ -38,8 +38,8 @@ Internal Representation and Key Implementation Points.
 
 "
 Class {
-	#name : #FMModelExporter,
-	#superclass : #Object,
+	#name : 'FMModelExporter',
+	#superclass : 'Object',
 	#instVars : [
 		'printer',
 		'lastUpdate',
@@ -48,10 +48,12 @@ Class {
 		'progressBar',
 		'indexMap'
 	],
-	#category : #'Fame-ImportExport-Exporters'
+	#category : 'Fame-ImportExport-Exporters',
+	#package : 'Fame-ImportExport',
+	#tag : 'Exporters'
 }
 
-{ #category : #exporting }
+{ #category : 'exporting' }
 FMModelExporter >> export: aCollectionOfElements [
 	printer inDocumentDo: [ 
 		aCollectionOfElements
@@ -59,38 +61,44 @@ FMModelExporter >> export: aCollectionOfElements [
 			separatedBy: [ printer printEntitySeparator ] ]
 ]
 
-{ #category : #exporting }
+{ #category : 'exporting' }
 FMModelExporter >> exportEntity: each [
+
 	| meta |
 	meta := model metaDescriptionOf: each.
-	printer inEntity: meta fullName do: [ 
+	printer inEntity: meta fullName do: [
+		| sortedProperties |
 		printer serial: (self indexOf: each).
-		((self sortedPropertiesOf: meta)
-			select: [ :property | 
-			self shouldExportProperty: property for: each ])
-			do:  [ :property | self exportProperty: property for: each ] separatedBy: [ printer printPropertySeparator ] ].
+		sortedProperties := (self sortedPropertiesOf: meta) select: [
+			                    :property |
+			                    self shouldExportProperty: property for: each ].
+		sortedProperties ifNotEmpty: [ printer printPropertySeparator ].
+		sortedProperties
+			do: [ :property | self exportProperty: property for: each ]
+			separatedBy: [ printer printPropertySeparator ] ].
 	self incrementProgressBar
 ]
 
-{ #category : #exporting }
+{ #category : 'exporting' }
 FMModelExporter >> exportProperty: property for: each [
 	| values |
 	values := model get: property element: each.
 	self exportProperty: property withAll: values
 ]
 
-{ #category : #exporting }
+{ #category : 'exporting' }
 FMModelExporter >> exportProperty: property withAll: values [
-	printer inProperty: property name do: [ 
+
+	printer inProperty: property name do: [
 		property isMultivalued ifTrue: [ printer beginMultivalue: property ].
-		values
-			do: [ :each | 
+		(values reject: [ :value | value asString = 'unavailable' "value = MooseUnavailableMetric" ])
+			do: [ :each |
 				property type isPrimitive
 					ifTrue: [ printer primitive: each ]
-					ifFalse: [ 
+					ifFalse: [
 						property isChildrenProperty
 							ifTrue: [ self exportEntity: each ]
-							ifFalse: [ 
+							ifFalse: [
 								(FM3Constant constants includes: each)
 									ifTrue: [ printer referenceName: each name ]
 									ifFalse: [ printer referenceNumber: (self indexOf: each) ] ] ] ]
@@ -98,7 +106,7 @@ FMModelExporter >> exportProperty: property withAll: values [
 		property isMultivalued ifTrue: [ printer endMultivalue: property ] ]
 ]
 
-{ #category : #exporting }
+{ #category : 'exporting' }
 FMModelExporter >> incrementProgressBar [
 	numberOfExportedElements := numberOfExportedElements + 1.
 	(progressBar isNotNil and: [ (Time millisecondsSince: lastUpdate) >= 500 ]) ifFalse: [ ^ self ].
@@ -107,28 +115,28 @@ FMModelExporter >> incrementProgressBar [
 	lastUpdate := Time millisecondClockValue
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMModelExporter >> indexOf: each [
 	^ indexMap at: each ifAbsentPut: [ indexMap size + 1 ]
 ]
 
-{ #category : #initialization }
+{ #category : 'initialization' }
 FMModelExporter >> initialize [
 	super initialize.
 	indexMap := IdentityHashTable new "We use IdentityHashTable because it is more performant than IdentityDictionary for big collections."
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMModelExporter >> model: aFMModel [
 	model := aFMModel
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMModelExporter >> printer: aPrinter [
 	printer := aPrinter
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMModelExporter >> roots [
 	^ model elements iterator
 		| [ :each | FM3Constant constants includes: each ] rejectIt
@@ -136,7 +144,7 @@ FMModelExporter >> roots [
 		> Array 
 ]
 
-{ #category : #exporting }
+{ #category : 'exporting' }
 FMModelExporter >> run [
 	| roots |
 	roots := self roots.
@@ -151,7 +159,7 @@ FMModelExporter >> run [
 			self export: roots ]
 ]
 
-{ #category : #exporting }
+{ #category : 'exporting' }
 FMModelExporter >> shouldExportProperty: property for: each [
 	| values |
 	(self shouldIgnoreProperty: property) ifTrue: [ ^ false ].
@@ -162,14 +170,14 @@ FMModelExporter >> shouldExportProperty: property for: each [
 	^ true
 ]
 
-{ #category : #exporting }
+{ #category : 'exporting' }
 FMModelExporter >> shouldIgnoreProperty: property [
 	(model metamodel includes: property) ifFalse: [ ^ true ].
 
 	^ property isDerived
 ]
 
-{ #category : #exporting }
+{ #category : 'exporting' }
 FMModelExporter >> sortedPropertiesOf: meta [
 	"We want to sort the properties into three categories:
 		- The one defining the name

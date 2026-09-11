@@ -1,31 +1,60 @@
 Class {
-	#name : #FMExporterTest,
-	#superclass : #TestCase,
-	#category : #'Fame-Tests'
+	#name : 'FMExporterTest',
+	#superclass : 'TestCase',
+	#category : 'Fame-Tests',
+	#package : 'Fame-Tests'
 }
 
-{ #category : #tests }
+{ #category : 'tests' }
+FMExporterTest >> testExportAsJSon [
+	| printer metamodel lines |
+	printer := FMJSONPrinter onString.
+	metamodel := FMMetaModelBuilder metamodelFrom: {LIBLibrary . LIBBook . LIBPerson . LIBTNamed}.
+	metamodel exportWithPrinter: printer.
+	lines := printer stream contents lines.
+	self assert: (lines first beginsWith: '[') .
+	self assert: (lines anySatisfy: [ :l | l includesSubstring: 'FM3.Package'] ) .
+	self assert: (lines anySatisfy: [ :l | l includesSubstring: 'FM3.Class'] ) .
+	self assert: (lines anySatisfy: [ :l | l includesSubstring: 'FM3.Property'] ) .
+	self assert: (lines last endsWith: ']' )
+]
+
+{ #category : 'tests' }
 FMExporterTest >> testExportAsMSE [
-	| printer |
+	| printer metamodel lines |
 	printer := FMMSEPrinter onString.
-	FMMetaMetaModel default exportWithPrinter: printer.
+	metamodel := FMMetaModelBuilder metamodelFrom: {LIBLibrary . LIBBook . LIBPerson . LIBTNamed}.
+	metamodel exportWithPrinter: printer.
 	self assert: printer stream contents isString.
-	self assert: printer stream contents first equals: $(
+	lines := printer stream contents lines.
+	self assert: lines first equals: '(' .
+	self assert: printer stream contents lines size equals: 73.
+	self assert: (lines allButFirst allSatisfy: [ :l | l beginsWith: '	'] ) .
+	self assert: (lines anySatisfy: [ :l | l includesSubstring: 'FM3.Package'] ) .
+	self assert: (lines anySatisfy: [ :l | l includesSubstring: 'FM3.Class'] ) .
+	self assert: (lines anySatisfy: [ :l | l includesSubstring: 'FM3.Property'] ) .
+	self assert: (lines last endsWith: ')' )
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 FMExporterTest >> testExportAsXML [
-	| printer |
+	| printer metamodel lines |
 	printer := FMXMLPrinter onString.
-	FMMetaMetaModel default exportWithPrinter: printer.
-	self assert: printer stream contents isString.
-	self assert: printer stream contents first equals: $<
+	metamodel := FMMetaModelBuilder metamodelFrom: {LIBLibrary . LIBBook . LIBPerson . LIBTNamed}.
+	metamodel exportWithPrinter: printer.
+	lines := printer stream contents lines.
+	self assert: (lines first beginsWith: '<') .
+	self assert: (lines allButFirst allSatisfy: [ :l | (l beginsWith: '<') or: [l beginsWith: '	']] ) .
+	self assert: (lines anySatisfy: [ :l | l includesSubstring: 'FM3.Package'] ) .
+	self assert: (lines anySatisfy: [ :l | l includesSubstring: 'FM3.Class'] ) .
+	self assert: (lines anySatisfy: [ :l | l includesSubstring: 'FM3.Property'] ) .
+	self assert: (lines allSatisfy: [ :l | l endsWith: '>'] )
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 FMExporterTest >> testExportedModelIsTheSameAsBeforeExport [
 	| metamodel printer |
-	metamodel := FMMetaModelBuilder metamodelFrom: {LIBLibrary . LIBBook . LIBPerson}.
+	metamodel := FMMetaModelBuilder metamodelFrom: {LIBLibrary . LIBBook . LIBPerson . LIBTNamed}.
 
 	self assert: metamodel packages size equals: 1.
 	self assert: metamodel classes size equals: 3.
@@ -40,7 +69,7 @@ FMExporterTest >> testExportedModelIsTheSameAsBeforeExport [
 	self assert: metamodel properties size equals: 6
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 FMExporterTest >> testMSEExportWithWrongTypeRaiseError [
 	| printer model |
 	model := FMModel withMetamodel: FMEquationSystemExample createMetamodel.

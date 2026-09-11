@@ -12,29 +12,35 @@ Examples
 		package: 'Famix-Traits-Method'
 "
 Class {
-	#name : #FMOne,
-	#superclass : #FMRelationSlot,
-	#category : #'Fame-Core-Utilities'
+	#name : 'FMOne',
+	#superclass : 'FMRelationSlot',
+	#category : 'Fame-Core-Utilities',
+	#package : 'Fame-Core',
+	#tag : 'Utilities'
 }
 
-{ #category : #testing }
+{ #category : 'testing' }
 FMOne >> isToOne [
 	^ true
 ]
 
-{ #category : #'meta-object-protocol' }
-FMOne >> write: newValue to: anObject [
-	| oldValue |
-	oldValue := self read: anObject.
-
+{ #category : 'internal' }
+FMOne >> updateOld: oldValue new: newValue in: anObject [
 	self hasInverse
 		ifTrue: [ oldValue ifNotNil: [ self removeAssociationFrom: anObject to: oldValue ].
 			newValue ifNotNil: [ self addAssociationFrom: anObject to: newValue ] ].
 
-	super write: newValue to: anObject
+	super write: newValue to: anObject.
+
+	^ newValue
 ]
 
-{ #category : #internal }
+{ #category : 'meta-object-protocol' }
+FMOne >> write: newValue to: anObject [
+	self updateOld: (self read: anObject) new: newValue in: anObject
+]
+
+{ #category : 'internal' }
 FMOne >> writeInverse: newValue to: anObject [
 	^ anObject instVarAt: index put: newValue
 ]

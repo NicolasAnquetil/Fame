@@ -1,10 +1,33 @@
+"
+Description
+--------------------
+
+I am a parser responsible of the JSON syntax parsing. I do not manage the creation of the entities, this part is delegated to a `FMImporter`.
+ 
+Unlike `FMMSEParser`, I do not support parsing properties without value.
+
+Internal Representation and Key Implementation Points.
+--------------------
+
+    Instance Variables
+- buffer:				<aBuffer>				Buffer used to keep a record of the previously read characters during the parsing.
+- characterSet:		<aCharacterSet>		A character set cached to speed up the reading of the JSON.
+- chararacter:			<aCharacter>			The last character read on the stream.
+- importer:				<aFMImporter>		The FMImporter responsible of the management of the entities to be imported.
+- lastUpdate:			<anInteger>			Time in millisecond since the last progress bar update.
+- progBar:				<aProgressBar>		A progress bar to display the parsing progress.
+- stream:				<aStream>				The stream containing the JSON to be read.
+
+"
 Class {
-	#name : #FMJSONParser,
-	#superclass : #FMMSEParser,
-	#category : #'Fame-ImportExport-Importers'
+	#name : 'FMJSONParser',
+	#superclass : 'FMMSEParser',
+	#category : 'Fame-ImportExport-Importers',
+	#package : 'Fame-ImportExport',
+	#tag : 'Importers'
 }
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> Document [
 	"Matches a document node (returns a boolean)."
 
@@ -26,7 +49,7 @@ FMJSONParser >> Document [
 	^ true
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> Entity [
 	"Matches an entity node (returns boolean)."
 
@@ -50,15 +73,19 @@ FMJSONParser >> Entity [
 	^ true
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> MultiEntity [
+
 	self tMultiOPEN ifFalse: [ ^ self backtrack: self position ].
-	[ 	self Entity. 	self incrementProgressBar. self tPropertySeparator ] whileTrue.
+	[ 
+	self Primitive or: [ self Reference or: [ self Reference2 or: [ self Entity ] ] ].
+	self incrementProgressBar.
+	self tPropertySeparator ] whileTrue.
 	self tMultiCLOSE ifFalse: [ ^ self syntaxError ].
 	^ true
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> Property [
 	"Matches a property node (returns boolean)."
 
@@ -69,6 +96,7 @@ FMJSONParser >> Property [
 	self tPropertyNameOPEN ifFalse: [ ^ self backtrack: pos ].
 	name := self tNAME.
 	self tPropertyNameClose ifFalse: [ ^ self backtrack: pos ].
+	self tPropertyNameSeparator ifFalse: [ ^ self backtrack: pos ].
 	name ifNil: [ ^ self backtrack: pos ].
 	importer inProperty: name do: [ 
 		[ self Value ] whileTrue.
@@ -77,7 +105,24 @@ FMJSONParser >> Property [
 	^ true
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
+FMJSONParser >> Reference [
+	"Matches a Reference node (returns boolean)."
+	"Reference --> OPEN REF n:Identifier { client referenceNumber: n } CLOSE"
+	| position serial |
+	position := self position.
+	self tOPEN ifFalse: [ ^ self backtrack: position ].
+	self tREF ifFalse: [ ^ self backtrack: position ].
+	self tPropertyNameSeparator ifFalse: [ ^ self backtrack: position ].
+	serial := self Identifier.
+	serial ifNil: [ ^ self backtrack: position ].
+	importer referenceNumber: serial.
+	self tCLOSE ifFalse: [ ^ self syntaxError ].
+	self tWHITESPACE.
+	^ true
+]
+
+{ #category : 'tokens' }
 FMJSONParser >> Reference2 [
 	"Matches a Reference node (returns boolean)."
 	"Reference --> OPEN REF n:Name { client referenceName: n } CLOSE"
@@ -85,6 +130,7 @@ FMJSONParser >> Reference2 [
 	position := self position.
 	self tOPEN ifFalse: [ ^ self backtrack: position ].
 	self tREF ifFalse: [ ^ self backtrack: position ].
+	self tPropertyNameSeparator ifFalse: [ ^ self backtrack: position ].
 	name := self String.
 	name ifNil: [ ^ self backtrack: position ].
 	importer referenceName: name.
@@ -93,13 +139,14 @@ FMJSONParser >> Reference2 [
 	^ true
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> Serial [
 	"Matches a serial number node (returns boolean)."
 	"Serial --> OPEN ID n:Identifier { client serial: n } CLOSE"
 	| position serial |
 	position := self position.
 	self tID ifFalse: [ ^ self backtrack: position ].
+	self tPropertyNameSeparator ifFalse: [ ^ self backtrack: position ].
 	serial := self Identifier.
 	serial ifNil: [ ^ self backtrack: position ].
 	importer serial: serial.
@@ -107,112 +154,134 @@ FMJSONParser >> Serial [
 	^ true
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> String [
-	$" == chararacter ifFalse: [ ^ nil ].
+
+	| previousChar isEscape |
+	"read a string"
+	$" == character ifFalse: [ ^ nil ].
 
 	buffer reset.
-
-	[ [ self next.
-	chararacter ifNil: [ self syntaxError ].
-	$" == chararacter ] whileFalse: [ buffer nextPut: chararacter ].
-	$" == self next ] whileTrue: [ buffer nextPut: chararacter ].
+	"read the string"
+	[ 
+		previousChar := character.
+		self next.
+		isEscape := character = $" and: [ previousChar = $\ ].
+		character ifNil: [ self syntaxError ].
+		$" == character and: [ isEscape not ]
+	]
+	whileFalse: [
+		($\ ~= character or: [ previousChar == $\ ])
+			ifTrue: [
+				buffer nextPut: character.
+				"if the character added is a $\ at the end of the parsed String there was a bug"
+				character = $\ ifTrue: [ character := $_ ] ]
+	].
+	"eat the last "" character"
+	self next.
 	self tWHITESPACE.
 	^ buffer contents
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> Value [
+
 	"Matchs a value (returns true)."
 
 	"Value := Reference | Primitive | Entity"
 
-	^ self Primitive or: [ self Reference or: [ self Reference2 or: [ self MultiEntity ] ] ]
+	^ self Primitive or: [ self Reference or: [ self Reference2 or: [ self MultiEntity or: [ self Entity ] ] ] ]
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tCLOSE [
 	^ self matchesWord: '}'
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tFULLNAME [
 	self tFULLNAMEPropertyOpen ifFalse: [ ^ nil ].
-	
+	self tPropertyNameSeparator ifFalse: [ ^ nil ].
+	self tPropertyNameOPEN ifFalse: [ ^ nil ].
 	buffer reset.
 	[ 
-	buffer nextPut: chararacter.
-	[ self nextCharIsAlphanumeric or: [ chararacter ~= $" ] ] whileTrue: [ 
-		buffer nextPut: chararacter ].
-	$. == chararacter ] whileTrue: [ 
-		buffer nextPut: chararacter.
+	buffer nextPut: character.
+	[ self nextCharIsAlphanumeric or: [ character ~= $" ] ] whileTrue: [ 
+		buffer nextPut: character ].
+	$. == character ] whileTrue: [ 
+		buffer nextPut: character.
 		(self characterSet isLetter: self next) ifFalse: [ 
 			^ self syntaxError ] ].
-	$: == chararacter ifTrue: [ ^ self syntaxError ].
+	$: == character ifTrue: [ ^ self syntaxError ].
 	self tFULLNAMEPropertyClose.
 	^ buffer contents
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tFULLNAMEPropertyClose [
 	^ self matchesWord: '"'
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tFULLNAMEPropertyOpen [
-	^ self matchesWord: '"FM3":"'
+	^ self matchesWord: '"FM3"'
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tID [
 	"Match id keyword (returns boolean)."
 
-	^ self matchesWord: '"id":'
+	^ self matchesWord: '"id"'
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tMultiCLOSE [
 	^ self matchesWord: ']'
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tMultiOPEN [
 	^ self matchesWord: '['
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tOPEN [
 	^ self matchesWord: '{'
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tPropertyNameClose [
-	^ self matchesWord: '":'
+	^ self matchesWord: '"'
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tPropertyNameOPEN [
 	^ self matchesWord: '"'
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
+FMJSONParser >> tPropertyNameSeparator [
+	^ self matchesWord: ':'
+]
+
+{ #category : 'tokens' }
 FMJSONParser >> tPropertySeparator [
 	^ self matchesWord: ','
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tPropertyValueCLOSE [
 	^ (self matchesWord: ',') or: [ self matchesWord: ''  ]
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tREF [
 	"Matches ref keyword (returns boolean)."
 
-	^ self matchesWord: '"ref":'
+	^ self matchesWord: '"ref"'
 ]
 
-{ #category : #tokens }
+{ #category : 'tokens' }
 FMJSONParser >> tWHITESPACE [
-	^ [ self atEnd not and: [ chararacter isSeparator  ] ] whileTrue: [ self next ]
+	^ [ self atEnd not and: [ character isSeparator  ] ] whileTrue: [ self next ]
 ]

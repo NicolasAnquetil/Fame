@@ -13,25 +13,34 @@ Examples
 		package: 'Famix-Traits-Method'
 "
 Class {
-	#name : #FMMany,
-	#superclass : #FMRelationSlot,
-	#category : #'Fame-Core-Utilities'
+	#name : 'FMMany',
+	#superclass : 'FMRelationSlot',
+	#category : 'Fame-Core-Utilities',
+	#package : 'Fame-Core',
+	#tag : 'Utilities'
 }
 
-{ #category : #internal }
+{ #category : 'internal' }
 FMMany >> add: newObject to: collectionOwner [
 	self hasInverse ifTrue: [ self addAssociationFrom: collectionOwner to: newObject ]
 ]
 
-{ #category : #initialization }
+{ #category : 'initialization' }
 FMMany >> initialize: anObject [
 	self write: (FMSlotMultivalueLink on: anObject slot: self) to: anObject
 ]
 
-{ #category : #internal }
+{ #category : 'internal' }
 FMMany >> remove: oldObject from: collectionOwner [
 
 	self hasInverse
 		ifTrue: [ self removeAssociationFrom: collectionOwner to: oldObject ]
 
+]
+
+{ #category : 'internal' }
+FMMany >> updateOld: oldValue new: newValue in: anObject [
+	"We usually should not end up here, but it might appen if someone directly write an object in a FMMany instead of using #value:."
+
+	^ anObject writeSlot: self value: newValue
 ]

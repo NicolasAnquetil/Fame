@@ -7,180 +7,122 @@ I am a class meant to be used as an internal of a FMMany slot.
 I'll be wrapped by the slot and manage the content of the many slot.
 "
 Class {
-	#name : #FMSlotMultivalueLink,
-	#superclass : #Collection,
+	#name : 'FMSlotMultivalueLink',
+	#superclass : 'OrderedCollection',
 	#instVars : [
-		'values',
 		'owner',
 		'slot'
 	],
-	#category : #'Fame-Core-Utilities'
+	#category : 'Fame-Core-Utilities',
+	#package : 'Fame-Core',
+	#tag : 'Utilities'
 }
 
-{ #category : #'instance creation' }
+{ #category : 'instance creation' }
+FMSlotMultivalueLink class >> new [
+
+	^ self new: 4
+]
+
+{ #category : 'instance creation' }
 FMSlotMultivalueLink class >> on: anObject slot: aFMRelationSlot [
 
 	^ self new owner: anObject slot: aFMRelationSlot
 
 ]
 
-{ #category : #copying }
-FMSlotMultivalueLink >> , aCollection [
-	^ self asOrderedCollection , aCollection
-]
-
-{ #category : #comparing }
-FMSlotMultivalueLink >> = otherCollection [ 
-	"Answer true if the receiver is equivalent to the otherCollection.
-	First test for identity, then rule out different species and sizes of
-	collections. As a last resort, examine each element of the receiver
-	and the otherCollection."
-
-	self == otherCollection ifTrue: [^ true].
-	self species == otherCollection species ifFalse: [^ false].
-	^ values hasEqualElements: otherCollection asOrderedCollection
-]
-
-{ #category : #accessing }
-FMSlotMultivalueLink >> add: anElement [
+{ #category : 'adding' }
+FMSlotMultivalueLink >> addLast: anElement [
 
 	slot add: anElement to: owner.
 	self unsafeAdd: anElement.
 	^ anElement
 ]
 
-{ #category : #accessing }
-FMSlotMultivalueLink >> at: index [
+{ #category : 'converting' }
+FMSlotMultivalueLink >> asOrderedCollection [
 
-	^values at: index
+	^ OrderedCollection newFrom: self
 ]
 
-{ #category : #iterators }
-FMSlotMultivalueLink >> basicIterator [
-	^ values basicIterator
-]
-
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMSlotMultivalueLink >> byName: name [
+
 	^ self byName: name ifAbsent: [ self errorNotFound: name ]
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMSlotMultivalueLink >> byName: name ifAbsent: exceptionBlock [
 
-	^values
-			detect: [ :each | each name asString = name asString ]
-			ifNone: exceptionBlock
-	 
+	^ self
+		  detect: [ :each | each name asString = name asString ]
+		  ifNone: exceptionBlock
 ]
 
-{ #category : #enumerating }
-FMSlotMultivalueLink >> do: aBlock [ 
-	
-	values do: aBlock
+{ #category : 'accessing' }
+FMSlotMultivalueLink >> byName: name ifPresent: aBlock ifAbsent: exceptionBlock [
+
+	^ self
+		  detect: [ :each | each name asString = name asString ]
+		  ifFound: aBlock
+		  ifNone: exceptionBlock
 ]
 
-{ #category : #'accessing-computed' }
-FMSlotMultivalueLink >> first [
-	^ self at: 1
-]
-
-{ #category : #comparing }
-FMSlotMultivalueLink >> hash [
-	"From sequenceable collection"
-	| hash |
-	hash := self species hash.
-	1 to: self size do: [ :i | hash := (hash + (self at: i) hash) hashMultiply ].
-	^ hash
-]
-
-{ #category : #private }
-FMSlotMultivalueLink >> inverseAdd: anObject [
-
-	^values add: anObject
-]
-
-{ #category : #private }
-FMSlotMultivalueLink >> inverseRemove: anObject [
-
-	^values remove: anObject
-]
-
-{ #category : #iterators }
-FMSlotMultivalueLink >> iterator [
-	^ values iterator
-]
-
-{ #category : #'accessing-computed' }
-FMSlotMultivalueLink >> last [
-	^ values last
-]
-
-{ #category : #private }
+{ #category : 'private' }
 FMSlotMultivalueLink >> owner: anObject slot: aFMRelationSlot [
 
 	owner := anObject.
-	slot := aFMRelationSlot.
-	values := OrderedCollection new.
-
+	slot := aFMRelationSlot
 ]
 
-{ #category : #copying }
-FMSlotMultivalueLink >> postCopy [
+{ #category : 'removing' }
+FMSlotMultivalueLink >> remove: anElement ifAbsent: exceptionBlock [
 
-	super postCopy.
-	values := values copy.
-]
-
-{ #category : #removing }
-FMSlotMultivalueLink >> remove: anElement ifAbsent: exceptionBlock [ 
-	
-	values remove: anElement ifAbsent: [ ^exceptionBlock value ].
+	super remove: anElement ifAbsent: [ ^ exceptionBlock value ].
 	slot remove: anElement from: owner.
-	^anElement
+	^ anElement
 ]
 
-{ #category : #'accessing-computed' }
-FMSlotMultivalueLink >> second [
-	^ self at: 2
+{ #category : 'removing' }
+FMSlotMultivalueLink >> removeAll [
+	"The collection is reversed to make a copy, to avoid trying to remove while iterating,
+	and to remove items from last to first, which is faster."
+
+	self reversed do: [ :anElement | self remove: anElement ]
 ]
 
-{ #category : #accessing }
-FMSlotMultivalueLink >> size [
-
-	^values size
-]
-
-{ #category : #private }
+{ #category : 'private' }
 FMSlotMultivalueLink >> species [
 
-	^OrderedCollection
+	^ OrderedCollection
 ]
 
-{ #category : #'accessing-computed' }
-FMSlotMultivalueLink >> third [
-	^ self at: 3
+{ #category : 'adding' }
+FMSlotMultivalueLink >> uncheckUnsafeAdd: element [
+	"Calls the implementation in OrderedCollection."
+
+	super addLast: element
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMSlotMultivalueLink >> unsafeAdd: element [
-	(values includes: element) ifFalse: [ values add: element ]
+	"The cost of this #includes can be pretty high so there is a way to disable it when we know there will be no duplicates. Check the class comment of the dynamic variable."
+
+	FMShouldCheckForDuplicatedEntitiesInMultivalueLinks value
+		ifTrue: [ (self includes: element) ifFalse: [ self uncheckUnsafeAdd: element ] ]
+		ifFalse: [ self uncheckUnsafeAdd: element ]
 ]
 
-{ #category : #private }
+{ #category : 'private' }
 FMSlotMultivalueLink >> unsafeRemove: element [
 
-	values remove: element ifAbsent: nil
+	super remove: element ifAbsent: nil
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMSlotMultivalueLink >> value: aCollection [
 
-	^self removeAll: values copy; addAll: aCollection
-]
-
-{ #category : #enumerating }
-FMSlotMultivalueLink >> withIndexDo: aBlock [ 
-	
-	values withIndexDo: aBlock
+	^ self
+		  removeAll;
+		  addAll: aCollection
 ]

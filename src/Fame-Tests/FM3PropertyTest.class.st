@@ -1,35 +1,43 @@
 Class {
-	#name : #FM3PropertyTest,
-	#superclass : #FM3ElementTest,
-	#category : #'Fame-Tests-Core'
+	#name : 'FM3PropertyTest',
+	#superclass : 'FM3ElementTest',
+	#category : 'Fame-Tests-Core',
+	#package : 'Fame-Tests',
+	#tag : 'Core'
 }
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 FM3PropertyTest >> actualClass [
 	^ FM3Property
 ]
 
-{ #category : #helpers }
+{ #category : 'helpers' }
 FM3PropertyTest >> addUnamedOwnerTo: anElement [
 	anElement mmClass: FM3Class new
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 FM3PropertyTest >> testClassHasOpposite [
 	| e |
 	e := metaMetamodel elementNamed: 'FM3.Property.class'.
 	self assert: e hasOpposite.
-	self assert: e opposite fullName equals: 'FM3.Class.properties'
+	self assert: e opposite fullName equals: 'FM3.Type.properties'
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
 FM3PropertyTest >> testIsCompositeDerived [
 	| e |
 	e := metaMetamodel elementNamed: 'FM3.Property.composite'.
 	self assert: e isDerived
 ]
 
-{ #category : #tests }
+{ #category : 'tests' }
+FM3PropertyTest >> testMetamodel [
+
+	self assert: (metaMetamodel elementNamed: 'FM3.Property.class') metamodel equals: metaMetamodel
+]
+
+{ #category : 'tests' }
 FM3PropertyTest >> testTypeHasOpposite [
 	| e |
 	e := metaMetamodel elementNamed: 'FM3.Property.type'.

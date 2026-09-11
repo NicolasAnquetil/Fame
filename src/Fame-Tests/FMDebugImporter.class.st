@@ -1,93 +1,117 @@
 Class {
-	#name : #FMDebugImporter,
-	#superclass : #Object,
+	#name : 'FMDebugImporter',
+	#superclass : 'Object',
 	#traits : 'FMTImportExportStructure',
 	#classTraits : 'FMTImportExportStructure classTrait',
 	#instVars : [
-		'a'
+		'tokens'
 	],
-	#category : #'Fame-Tests'
+	#category : 'Fame-Tests',
+	#package : 'Fame-Tests'
 }
 
-{ #category : #parsing }
+{ #category : 'parsing' }
 FMDebugImporter >> beginDocument [
-	a := a copyWith: (Array with: #beginDocument)
+
+	tokens := tokens copyWith: (Array with: #beginDocument)
 ]
 
-{ #category : #parsing }
-FMDebugImporter >> beginEntity: name [ 
-	a := a copyWith: (Array with:   #beginEntity: with: name)
+{ #category : 'parsing' }
+FMDebugImporter >> beginEntity: name [
+
+	tokens := tokens copyWith: (Array with: #beginEntity: with: name)
 ]
 
-{ #category : #parsing }
-FMDebugImporter >> beginProperty: name [ 
-	a := a copyWith: (Array with: #beginProperty: with:  name )
+{ #category : 'parsing' }
+FMDebugImporter >> beginProperty: name [
+
+	tokens := tokens copyWith: (Array with: #beginProperty: with: name)
 ]
 
-{ #category : #accessing }
+{ #category : 'accessing' }
 FMDebugImporter >> contents [
-	^ a
+
+	^ tokens
 ]
 
-{ #category : #parsing }
+{ #category : 'parsing' }
 FMDebugImporter >> endDocument [
-	a := a copyWith: (Array with: #endDocument)
+
+	tokens := tokens copyWith: (Array with: #endDocument)
 ]
 
-{ #category : #parsing }
-FMDebugImporter >> endEntity: name [ 
-	a := a copyWith: (Array with: #endEntity: with: name)
+{ #category : 'parsing' }
+FMDebugImporter >> endEntity: name [
+
+	tokens := tokens copyWith: (Array with: #endEntity: with: name)
 ]
 
-{ #category : #parsing }
-FMDebugImporter >> endProperty: name [ 
-	a := a copyWith: (Array with: #endProperty: with: name)
+{ #category : 'parsing' }
+FMDebugImporter >> endProperty: name [
+
+	tokens := tokens copyWith: (Array with: #endProperty: with: name)
 ]
 
-{ #category : #accessing }
-FMDebugImporter >> exportString [
+{ #category : 'accessing' }
+FMDebugImporter >> exportJsonString [
+
 	| printer |
+
+	printer := FMJSONPrinter onString.
+	self replayOn: printer.
+	^ printer stream contents
+]
+
+{ #category : 'accessing' }
+FMDebugImporter >> exportMSEString [
+
+	| printer |
+
 	printer := FMMSEPrinter onString.
 	self replayOn: printer.
 	^ printer stream contents
 ]
 
-{ #category : #initialization }
+{ #category : 'initialization' }
 FMDebugImporter >> initialize [
 	super initialize.
 	self reset
 ]
 
-{ #category : #parsing }
-FMDebugImporter >> primitive: value [ 
-	a := a copyWith: (Array with:  #primitive: with: value )
+{ #category : 'parsing' }
+FMDebugImporter >> primitive: value [
+
+	tokens := tokens copyWith: (Array with: #primitive: with: value)
 ]
 
-{ #category : #parsing }
-FMDebugImporter >> referenceName: name [ 
-	a := a copyWith: (Array with: #referenceName: with: name)
+{ #category : 'parsing' }
+FMDebugImporter >> referenceName: name [
+
+	tokens := tokens copyWith: (Array with: #referenceName: with: name)
 ]
 
-{ #category : #parsing }
-FMDebugImporter >> referenceNumber: index [ 
-	a := a copyWith: (Array with: #referenceNumber: with: index  )
+{ #category : 'parsing' }
+FMDebugImporter >> referenceNumber: index [
+
+	tokens := tokens copyWith:
+		          (Array with: #referenceNumber: with: index)
 ]
 
-{ #category : #accessing }
-FMDebugImporter >> replayOn: aParseClient [ 
-	
-	a do: [ :each |
-		aParseClient 
-			perform: each first
-			withArguments: each allButFirst ].
+{ #category : 'accessing' }
+FMDebugImporter >> replayOn: aParseClient [
+
+	tokens do: [ :each |
+		aParseClient perform: each first withArguments: each allButFirst ]
 ]
 
-{ #category : #initialization }
+{ #category : 'initialization' }
 FMDebugImporter >> reset [
-	a := #()
+
+	tokens := #(  )
 ]
 
-{ #category : #parsing }
-FMDebugImporter >> serial: index [ 
-	a := a copyWith: (Array with: #serial: with: index )
+{ #category : 'parsing' }
+FMDebugImporter >> serial: index [
+
+	tokens := tokens copyWith: (Array with: #serial: with: index)
 ]
