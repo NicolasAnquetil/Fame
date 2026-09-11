@@ -49,6 +49,34 @@ Experiments class >> experimentImport: fileInput to: fileOutput for: numberOfRep
 ]
 
 { #category : 'writing' }
+Experiments class >> loadModelFrom: fileName [
+
+	| fileRef |
+	fileRef := fileName asFileReference.
+
+	(fileRef extension = 'json') ifTrue: [
+		^fileRef readStreamDo: [ :stream |
+			FamixJavaModel new perform: #importFromJSONSeparetedStream: with: stream ] ].
+
+	(fileRef extension = 'mpk') ifTrue: [
+		^FamixJavaModel  importFromMessagePackFile: fileRef ].
+
+]
+
+{ #category : 'writing' }
+Experiments class >> saveModel: aModel to: fileName [
+
+	| fileRef |
+	fileRef := fileName asFileReference.
+	(fileRef extension = 'json') ifTrue: [
+		fileRef writeStreamDo: [ :st |
+			aModel exportSeparetedWithMetamodelUsingPrinter: (FMJSONSeparatedCompactPrinter on: st) ] ].
+	(fileRef extension = 'mpk') ifTrue: [
+		fileRef binaryWriteStreamDo: [ :st | aModel exportToMsgPackStream: st ] ].
+
+]
+
+{ #category : 'writing' }
 Experiments >> averageResultRow [
 
 	^ {
