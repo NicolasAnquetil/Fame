@@ -29,6 +29,28 @@ FMSplitProtobufParser >> nameAt: anIndex [
 ]
 
 { #category : 'parsing' }
+FMSplitProtobufParser >> parseDocument [
+	"Document { repeated string names = 1; repeated Entity entities = 2; repeated References references = 3; }"
+
+	| reader tag |
+	reader := PBWireReader on: stream upToEnd.
+	names := OrderedCollection new.
+	importer beginDocument.
+	[ reader atEnd ] whileFalse: [
+			tag := reader readTag.
+			tag fieldNumber = 1
+				ifTrue: [ names add: reader readString ]
+				ifFalse: [
+						tag fieldNumber = 2
+							ifTrue: [ self parseEntity: reader readLengthDelimited ]
+							ifFalse: [
+									tag fieldNumber = 3
+										ifTrue: [ self parseReferences: reader readLengthDelimited ]
+										ifFalse: [ reader skipField: tag ] ] ] ].
+	importer endDocument
+]
+
+{ #category : 'parsing' }
 FMSplitProtobufParser >> parseEntity: aReader [
 	"Entity { uint64 id = 1; uint32 type = 2; repeated Property properties = 3; }"
 
@@ -117,23 +139,9 @@ FMSplitProtobufParser >> parseValue: aReader [
 
 { #category : 'parsing' }
 FMSplitProtobufParser >> run [
+	"The exporter writes each relation once, so there are no duplicates in multivalued links: like FMMSEParser>>#basicRun, we disable the costly duplicate check."
 
-	| reader tag |
-	reader := PBWireReader on: stream upToEnd.
-	names := OrderedCollection new.
-	importer beginDocument.
-	[ reader atEnd ] whileFalse: [
-			tag := reader readTag.
-			tag fieldNumber = 1
-				ifTrue: [ names add: reader readString ]
-				ifFalse: [
-						tag fieldNumber = 2
-							ifTrue: [ self parseEntity: reader readLengthDelimited ]
-							ifFalse: [
-									tag fieldNumber = 3
-										ifTrue: [ self parseReferences: reader readLengthDelimited ]
-										ifFalse: [ reader skipField: tag ] ] ] ].
-	importer endDocument
+	FMShouldCheckForDuplicatedEntitiesInMultivalueLinks value: false during: [ self parseDocument ]
 ]
 
 { #category : 'accessing' }

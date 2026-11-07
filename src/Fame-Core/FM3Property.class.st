@@ -61,7 +61,8 @@ Class {
 		'implementingSelector',
 		'isTarget',
 		'isSource',
-		'defaultValue'
+		'defaultValue',
+		'implementingMutator'
 	],
 	#category : 'Fame-Core-Model',
 	#package : 'Fame-Core',
@@ -136,13 +137,22 @@ FM3Property >> implementingClass [
 ]
 
 { #category : 'accessing' }
+FM3Property >> implementingMutator [
+	"The setter of the implementing selector, cached: building it with #asMutator interns a symbol, which is costly when setting millions of values during an import."
+
+	^ implementingMutator ifNil: [ implementingMutator := self implementingSelector asMutator ]
+]
+
+{ #category : 'accessing' }
 FM3Property >> implementingSelector [
 	^ implementingSelector
 ]
 
 { #category : 'accessing' }
-FM3Property >> implementingSelector: compiledMethod [ 
-	implementingSelector := compiledMethod
+FM3Property >> implementingSelector: compiledMethod [
+
+	implementingSelector := compiledMethod.
+	implementingMutator := nil
 ]
 
 { #category : 'accessing' }
@@ -334,8 +344,8 @@ FM3Property >> package: newPackage [
 FM3Property >> setOn: element rawValue: array [
 	"This is the internal logic to set the value inside the object.
 	By default build and call a mutator for the implementing selector"
-	
-	element perform: self implementingSelector asMutator with: array
+
+	element perform: self implementingMutator with: array
 ]
 
 { #category : 'private' }
