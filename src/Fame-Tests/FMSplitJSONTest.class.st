@@ -64,6 +64,19 @@ FMSplitJSONTest >> testExportFormFeedIsEscaped [
 ]
 
 { #category : 'tests - export' }
+FMSplitJSONTest >> testExportIsCompact [
+
+	| exported |
+	(model newMethodNamed: 'bar') parentType: (model newClassNamed: 'Foo').
+	exported := String streamContents: [ :stream | model exportToSplitJSONStream: stream ].
+
+	"No string of this model contains whitespace, so there must be none at all"
+	self deny: (exported anySatisfy: [ :char | char isSeparator ]).
+	self assert: (exported includesSubstring: '"parentType":{"ref":').
+	self assert: (exported beginsWith: '{"entities":[{"FM3":')
+]
+
+{ #category : 'tests - export' }
 FMSplitJSONTest >> testExportManyToManyOnlyOnOneSide [
 
 	| json exception method |

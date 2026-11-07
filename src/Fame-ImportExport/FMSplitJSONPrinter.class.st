@@ -14,6 +14,13 @@ FMSplitJSONPrinter >> beginDocument [
 	stream nextPut: ${
 ]
 
+{ #category : 'private' }
+FMSplitJSONPrinter >> crTabs [
+	"The split JSON format is compact: no line breaks nor indentation."
+
+	
+]
+
 { #category : 'parsing' }
 FMSplitJSONPrinter >> endDocument [
 
@@ -50,4 +57,22 @@ FMSplitJSONPrinter >> inSection: aString do: aBlock [
 FMSplitJSONPrinter >> printSectionSeparator [
 
 	stream nextPut: $,
+]
+
+{ #category : 'parsing' }
+FMSplitJSONPrinter >> referenceName: name [
+
+	stream
+		nextPutAll: '{"ref":"';
+		nextPutAll: name;
+		nextPutAll: '"}'
+]
+
+{ #category : 'parsing' }
+FMSplitJSONPrinter >> referenceNumber: index [
+
+	stream
+		nextPutAll: '{"ref":';
+		print: index;
+		nextPut: $}
 ]
