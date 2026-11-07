@@ -77,13 +77,14 @@ FMJSONPrinter >> printEntitySeparator [
 	stream nextPut: $,
 ]
 
-{ #category : 'parsing' }
+{ #category : 'private' }
 FMJSONPrinter >> printJSONStringCharacter: char [
 	"Writes the JSON string escape for a character, or the character itself."
 
 	char = Character cr ifTrue: [ ^ stream nextPutAll: '\r' ].
 	char = Character lf ifTrue: [ ^ stream nextPutAll: '\n' ].
 	char = Character tab ifTrue: [ ^ stream nextPutAll: '\t' ].
+	char = Character newPage ifTrue: [ ^ stream nextPutAll: '\f' ].
 	char = $" ifTrue: [ ^ stream nextPutAll: '\"' ].
 	char = $\ ifTrue: [ ^ stream nextPutAll: '\\' ].
 	^ stream nextPut: char

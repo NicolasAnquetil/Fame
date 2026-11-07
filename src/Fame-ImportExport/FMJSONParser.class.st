@@ -175,6 +175,7 @@ FMJSONParser >> String [
 					character = $n ifTrue: [ character := Character lf ].
 					character = $r ifTrue: [ character := Character cr ].
 					character = $t ifTrue: [ character := Character tab ].
+					character = $f ifTrue: [ character := Character newPage ].
 					buffer nextPut: character ]
 			ifFalse: [ buffer nextPut: character ].
 		self next ] repeat
