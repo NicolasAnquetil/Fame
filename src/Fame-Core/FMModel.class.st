@@ -138,6 +138,15 @@ FMModel >> elements [
 	^ elements asArray
 ]
 
+{ #category : 'exporting' }
+FMModel >> exportWithPrinter: aParseClient usingExporter: anExporterClass [
+
+	anExporterClass new
+		model: self;
+		printer: aParseClient;
+		run
+]
+
 { #category : 'accessing-meta' }
 FMModel >> get: propertyOrName element: element [
 	^ (self coerceProperty: propertyOrName receiver: element) getFrom: element
